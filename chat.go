@@ -103,6 +103,32 @@ type DeleteMessageResponse struct {
 	Success bool   `json:"success"`
 }
 
+type GetMessagesRequest struct {
+	RoomID string `json:"roomId"`
+	Count  int64  `json:"count,omitempty"`
+	Offset int64  `json:"offset,omitempty"`
+}
+
+type GetMessagesResponse struct {
+	Messages []Messages `json:"messages"`
+	Count    int64      `json:"count"`
+	Offset   int64      `json:"offset"`
+	Total    int64      `json:"total"`
+	Success  bool       `json:"success"`
+}
+
+type Messages struct {
+	ID        string    `json:"_id"`
+	Rid       string    `json:"rid"`
+	Msg       string    `json:"msg"`
+	Timestamp time.Time `json:"ts"`
+	U         struct {
+		ID       string `json:"_id"`
+		Username string `json:"username"`
+	} `json:"u"`
+	UpdateAt time.Time `json:"_updateAt"`
+}
+
 type GetPinnedMsgRequest struct {
 	RoomId string
 	Count  int
@@ -205,6 +231,38 @@ func (c *Client) GetMessage(param *SingleMessageId) (*GetMessageResponse, error)
 	}
 
 	res := GetMessageResponse{}
+
+	if err := c.sendRequest(req, &res); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+func (c *Client) GetMessages(param *GetMessagesRequest) (*GetMessagesResponse, error) {
+	req, err := http.NewRequest("GET",
+		fmt.Sprintf("%s/%s/channels.messages?roomId=%s", c.baseURL, c.apiVersion, param.RoomID),
+		nil)
+
+	if param.RoomID == "" {
+		return nil, fmt.Errorf("false parameters")
+	}
+
+	url := req.URL.Query()
+	if param.Count != 0 {
+		url.Add("count", strconv.Itoa(int(param.Count)))
+	}
+
+	if param.Offset != 0 {
+		url.Add("offset", strconv.Itoa(int(param.Count)))
+	}
+	req.URL.RawQuery = url.Encode()
+
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetMessagesResponse{}
 
 	if err := c.sendRequest(req, &res); err != nil {
 		return nil, err
